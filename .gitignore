@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Claude Code local state
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+
+# Pipeline cache — raw MusicBrainz responses (regenerable; ~5MB).
+# Delete this line to commit it and make data.json fully reproducible offline.
+pipeline/.cache/
+
+# Pipeline scratch output
+indie-index/data.preview.json

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2″ — method &amp; sources</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="robots" content="index">
+<meta name="description" content="How 2″ is built: a cycle of sieves — a MusicBrainz crawl filtered by year, a Claude notability sieve, and dedup — with verbatim prompts and an admitted 1995–2003 bias.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper:#e7e0cf; --paper-2:#ded6c1; --paper-3:#d4cbb2; --ink:#1b1a16;
+    --ink-2:#6c6657; --ink-3:#97907c; --rust:#a8432c; --eng:#b23a2b;
+    --studio:#b8862a; --artist:#3c5f78; --label:#6c5b7b;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--paper); color:var(--ink); font-family:'Space Mono',ui-monospace,Menlo,monospace;
+    -webkit-font-smoothing:antialiased; line-height:1.65; }
+  #grain { position:fixed; inset:0; z-index:9000; pointer-events:none; opacity:.055; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  #frame { position:fixed; inset:9px; z-index:8000; pointer-events:none; border:1.5px solid var(--ink); }
+  .wrap { max-width:820px; margin:0 auto; padding:54px 40px 120px; }
+
+  header.masthead { display:flex; align-items:center; justify-content:space-between; gap:20px;
+    border-bottom:2px solid var(--ink); padding-bottom:18px; margin-bottom:8px; }
+  .badge { display:inline-block; font-family:'Archivo',sans-serif; font-weight:900; font-size:40px;
+    line-height:1; color:var(--rust); border:3px solid var(--rust); padding:3px 12px 5px;
+    background:rgba(168,67,44,0.05); box-shadow:2px 2px 0 rgba(168,67,44,0.18); text-decoration:none; }
+  header .lead { text-align:right; }
+  header .lead h1 { font-family:'Archivo',sans-serif; font-weight:900; font-size:20px; text-transform:uppercase;
+    letter-spacing:-0.01em; }
+  header .lead a { color:var(--rust); font-size:11px; text-decoration:none; letter-spacing:.06em; text-transform:uppercase; }
+  header .lead a:hover { text-decoration:underline; }
+
+  .standfirst { font-size:14px; color:var(--ink); margin:26px 0 8px; line-height:1.6; }
+  .standfirst b { color:var(--rust); }
+
+  section { margin-top:38px; }
+  h2 { font-family:'Archivo',sans-serif; font-weight:800; font-size:13px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink); border-bottom:1px solid var(--ink); padding-bottom:6px; margin-bottom:14px;
+    display:flex; gap:10px; align-items:baseline; }
+  h2 .no { color:var(--rust); font-weight:900; }
+  p { font-size:13px; margin:10px 0; max-width:70ch; }
+  p.muted { color:var(--ink-2); }
+  a.ext { color:var(--rust); text-decoration:none; border-bottom:1px solid var(--ink-3); }
+  a.ext:hover { border-color:var(--rust); }
+  strong.k { color:var(--ink); }
+
+  /* cycle-of-sieves diagram */
+  figure.diagram { margin:6px 0 14px; padding:18px 10px 10px; background:var(--paper-2);
+    border:1.5px solid var(--ink); }
+  figure.diagram svg { width:100%; height:auto; display:block; }
+  figure.diagram figcaption { font-size:10px; color:var(--ink-2); text-transform:uppercase; letter-spacing:.1em;
+    text-align:center; margin-top:6px; }
+  ol.sieves { list-style:none; margin:14px 0; counter-reset:s; }
+  ol.sieves li { font-size:13px; padding:9px 0 9px 40px; position:relative; border-bottom:1px dotted var(--ink-3);
+    max-width:72ch; }
+  ol.sieves li::before { counter-increment:s; content:counter(s); position:absolute; left:0; top:8px;
+    width:24px; height:24px; line-height:24px; text-align:center; color:var(--paper); background:var(--rust);
+    font-family:'Archivo',sans-serif; font-weight:800; font-size:12px; }
+  ol.sieves li b { color:var(--ink); }
+
+  table.src { width:100%; border-collapse:collapse; font-size:12px; margin:8px 0; }
+  table.src td { border-bottom:1px dotted var(--ink-3); padding:8px 6px; vertical-align:top; }
+  table.src td.h { color:var(--ink-2); text-transform:uppercase; letter-spacing:.06em; font-size:10px; width:130px; white-space:nowrap; }
+
+  .stats { display:flex; flex-wrap:wrap; gap:22px; margin:14px 0; padding:14px 16px; background:var(--paper-2);
+    border:1.5px solid var(--ink); }
+  .stats .s .n { font-family:'Archivo',sans-serif; font-weight:800; font-size:24px; display:block; line-height:1; }
+  .stats .s .l { font-size:9px; color:var(--ink-2); text-transform:uppercase; letter-spacing:.06em; }
+  .stats .s.core .n { color:var(--ink); }
+  .stats .s.auto .n { color:var(--rust); }
+
+  pre { background:#221f1a; color:#e7e0cf; border:1.5px solid var(--ink); padding:16px 18px; overflow-x:auto;
+    font-size:11.5px; line-height:1.55; white-space:pre-wrap; margin:12px 0; }
+  .promptlabel { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-2); margin-top:18px; }
+
+  ul.notes { list-style:none; margin:8px 0; }
+  ul.notes li { font-size:13px; padding:7px 0 7px 18px; position:relative; border-bottom:1px dotted var(--ink-3); max-width:72ch; }
+  ul.notes li::before { content:"—"; position:absolute; left:0; color:var(--rust); }
+
+  footer { margin-top:54px; padding-top:18px; border-top:2px solid var(--ink); font-size:11px; color:var(--ink-2);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; letter-spacing:.04em; }
+  footer a { color:var(--rust); text-decoration:none; }
+  footer a:hover { text-decoration:underline; }
+  .cat { font-weight:700; color:var(--ink); letter-spacing:.08em; }
+  .dkey { display:flex; flex-wrap:wrap; gap:8px 20px; justify-content:center; margin-top:12px;
+    padding-top:12px; border-top:1px dotted var(--ink-3); font-size:11px; color:var(--ink-2); }
+  .dkey .ki { display:flex; align-items:center; gap:7px; }
+  .dkey .sw { width:14px; height:14px; flex:none; border:1.5px solid var(--ink); }
+  .dkey .sw.rust { background:rgba(168,67,44,0.12); border-color:var(--rust); }
+  .dkey .sw.inko { background:var(--paper); border-color:var(--ink); }
+  .dkey .sw.inkf { background:var(--ink); border-color:var(--ink); }
+
+</style>
+</head>
+<body>
+<div id="grain"></div>
+<div id="frame"></div>
+<div class="wrap">
+
+  <header class="masthead">
+    <a class="badge" href="index.html" title="back to the graph">2&Prime;</a>
+    <div class="lead">
+      <h1>Method &amp; Sources</h1>
+      <a href="index.html">← back to the graph</a>
+    </div>
+  </header>
+
+  <p class="standfirst">
+    <b>2″</b> is built by a <b>cycle of sieves</b>. A crawler pulls recording credits from an open
+    database; a chain of filters throws out everything that isn't a real, in-window record; and a
+    language model nominates the next batch of people to crawl — round after round. This page
+    documents that process first, then the sources, then the literal prompts. No claims of taste
+    are made on your behalf. Here is the method; judge it.
+  </p>
+
+  <section>
+    <h2><span class="no">01</span> The process — a cycle of sieves</h2>
+    <figure class="diagram">
+      <svg viewBox="0 0 740 462" role="img" aria-label="Pipeline diagram: seed, crawl, three sieves, merge, and a loop back to seed.">
+        <defs>
+          <marker id="ah" markerWidth="9" markerHeight="9" refX="5.5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#1b1a16"/>
+          </marker>
+          <marker id="ahr" markerWidth="9" markerHeight="9" refX="5.5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#a8432c"/>
+          </marker>
+        </defs>
+        <!-- boxes -->
+        <g font-family="'Space Mono',monospace" font-size="13" text-anchor="middle">
+          <!-- A seed -->
+          <rect x="210" y="14" width="320" height="44" rx="3" fill="#e7e0cf" stroke="#1b1a16" stroke-width="1.5"/>
+          <text x="370" y="41" fill="#1b1a16"><tspan font-weight="700">SEED</tspan> — engineers we trust</text>
+          <!-- B crawl -->
+          <rect x="210" y="80" width="320" height="44" rx="3" fill="#e7e0cf" stroke="#1b1a16" stroke-width="1.5"/>
+          <text x="370" y="100" fill="#1b1a16"><tspan font-weight="700">CRAWL</tspan> · MusicBrainz</text>
+          <text x="370" y="116" fill="#6c6657" font-size="10.5">deterministic parse — no LLM here</text>
+          <!-- C sieve 1 -->
+          <rect x="210" y="146" width="320" height="44" rx="3" fill="#e7e0cf" stroke="#1b1a16" stroke-width="1.5"/>
+          <text x="370" y="166" fill="#1b1a16"><tspan font-weight="700">SIEVE ①</tspan> year window 1995–2003</text>
+          <text x="370" y="182" fill="#6c6657" font-size="10.5">drops out-of-era credits</text>
+          <!-- D sieve 2 -->
+          <rect x="210" y="212" width="320" height="44" rx="3" fill="rgba(168,67,44,0.08)" stroke="#a8432c" stroke-width="1.5"/>
+          <text x="370" y="232" fill="#a8432c"><tspan font-weight="700">SIEVE ②</tspan> notability · Claude</text>
+          <text x="370" y="248" fill="#a8432c" font-size="10.5">drops junk &amp; total unknowns</text>
+          <!-- E sieve 3 -->
+          <rect x="210" y="278" width="320" height="44" rx="3" fill="#e7e0cf" stroke="#1b1a16" stroke-width="1.5"/>
+          <text x="370" y="298" fill="#1b1a16"><tspan font-weight="700">SIEVE ③</tspan> dedup vs the index</text>
+          <text x="370" y="314" fill="#6c6657" font-size="10.5">drops anything already held</text>
+          <!-- F merge -->
+          <rect x="210" y="344" width="320" height="44" rx="3" fill="#1b1a16" stroke="#1b1a16" stroke-width="1.5"/>
+          <text x="370" y="371" fill="#e7e0cf"><tspan font-weight="700">MERGE</tspan> → data.json · tagged src:mb</text>
+        </g>
+        <!-- down arrows -->
+        <g stroke="#1b1a16" stroke-width="1.5" fill="none">
+          <line x1="370" y1="58"  x2="370" y2="78"  marker-end="url(#ah)"/>
+          <line x1="370" y1="124" x2="370" y2="144" marker-end="url(#ah)"/>
+          <line x1="370" y1="190" x2="370" y2="210" marker-end="url(#ah)"/>
+          <line x1="370" y1="256" x2="370" y2="276" marker-end="url(#ah)"/>
+          <line x1="370" y1="322" x2="370" y2="342" marker-end="url(#ah)"/>
+        </g>
+        <!-- the loop: merge -> back to seed -->
+        <path d="M530,366 H636 V36 H534" fill="none" stroke="#a8432c" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ahr)"/>
+        <text x="648" y="201" fill="#a8432c" font-family="'Space Mono',monospace" font-size="11"
+              text-anchor="middle" transform="rotate(90 648 201)">Claude nominates more engineers</text>
+      </svg>
+      <div class="dkey">
+        <span class="ki"><i class="sw rust"></i> the language model (Claude) acts here</span>
+        <span class="ki"><i class="sw inko"></i> deterministic code — no LLM</span>
+        <span class="ki"><i class="sw inkf"></i> the stored index (data.json)</span>
+      </div>
+      <figcaption>seed → crawl → three sieves → merge → repeat</figcaption>
+    </figure>
+    <p>
+      The graph grows in <strong class="k">rounds</strong>. Each round starts from engineers we already
+      trust, crawls their credits, runs everything through three sieves, and merges what survives. Then a
+      language model nominates more in-scope engineers — the hubs that connect the scene — and the cycle
+      repeats. Nothing is invented: every node is a real credit that passed every sieve.
+    </p>
+    <ol class="sieves">
+      <li><b>Year sieve — 1995–2003.</b> A hard filter in code. Anything outside the window is dropped before anything else looks at it. (Why this window: see §05.)</li>
+      <li><b>Notability sieve — Claude.</b> The only place a language model touches the data. It removes obvious noise — compilations posing as artists, DJ mixes, mis-parsed text, total unknowns — and nothing else. It does not judge genre, era, or worth. Exact prompt in §03.</li>
+      <li><b>Dedup sieve.</b> Anything already in the index — curated or previously crawled — is dropped, so the same record can't be added twice.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="no">02</span> What the model does — and doesn't</h2>
+    <p>
+      The language model is a <strong class="k">sieve, not a curator</strong>. It does not decide who
+      belongs in the scene, does not rank, and does not write biographies. The crawl is
+      <em>network-first</em>: keep almost everything a real engineer recorded. The model's only jobs are
+      (a) throwing out obvious noise at SIEVE ②, and (b) nominating the next round's engineers. Where it
+      is unsure, the rule is <em>keep</em> — we would rather carry a few odd inclusions, visibly tagged,
+      than silently delete something real. Era is enforced in <em>code</em> (SIEVE ①), not by the model,
+      so it can't double-penalise.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="no">03</span> The prompts, verbatim</h2>
+    <p class="muted">These are the literal instructions given to the model. Nothing is paraphrased.</p>
+
+    <div class="promptlabel">// SIEVE ② — the notability sieve (run on every newly-discovered artist)</div>
+    <pre>You vet candidate musical artists discovered by crawling the production
+credits of indie / alternative recording engineers (Albini, McEntire, Ek,
+Vernhes, etc.). The project is NETWORK-FIRST: keep almost everything a real
+engineer recorded, across ANY genre and ANY era. Your only job is removing noise.
+
+For each candidate, set keep=true UNLESS it is clearly one of:
+  - not a real musical artist: "Various Artists", a label sampler/compilation,
+    a DJ mix, a soundtrack-various, spoken-word/audiobook, or mis-parsed text;
+  - a total unknown with NO discernible notability: no real label, no press,
+    no Wikipedia/Discogs footprint — indistinguishable from noise.
+
+NOT reasons to drop: wrong genre, wrong era, being obscure-but-real, being
+famous (e.g. a rock legend an indie engineer happened to record stays IN).
+When unsure, keep=true — we trim later.
+
+Return ONLY a JSON array, one object per candidate:
+{"name": &lt;exact name&gt;, "keep": true|false, "reason": &lt;short&gt;}.</pre>
+
+    <div class="promptlabel">// the loop — nominating the next round's engineers</div>
+    <pre>You curate a database of 1995-2003 US/UK indie, alternative, post-rock, lo-fi,
+slowcore, math-rock, post-hardcore, shoegaze recording credits. We ALREADY index
+these recording engineers/producers: {…current list…}. Name 25 MORE real,
+well-documented recording engineers or producers who worked with bands in that
+scene and era and are NOT already in the list. Favor people who recorded several
+notable indie/alternative acts (they connect the graph). Reply with ONLY a JSON
+array of name strings, nothing else.</pre>
+  </section>
+
+  <section>
+    <h2><span class="no">04</span> Data sources</h2>
+    <table class="src">
+      <tr><td class="h">Curated core</td><td>Hand-built and hand-verified from album liner notes, label pages, AllMusic, Tape Op and Sound on Sound. Every credit double-checked. This is the spine.</td></tr>
+      <tr><td class="h">Expansion</td><td>A crawl of <a class="ext" href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a> (open, CC0). One request per person returns role + album + year + performing band; parsing is deterministic — no language model reads the data.</td></tr>
+      <tr><td class="h">Vetting</td><td>A single language model (<strong class="k">Claude Sonnet</strong>) runs SIEVE ② and the engineer nomination. It judges nothing about taste, genre, or era — see §02–§03.</td></tr>
+      <tr><td class="h">Album art</td><td>Fetched on demand from the iTunes Search API, cached per session. Not stored.</td></tr>
+      <tr><td class="h">Outbound links</td><td>Every entry links to <a class="ext" href="https://www.discogs.com" target="_blank" rel="noopener">Discogs</a> and MusicBrainz so you can check the source yourself.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="no">05</span> The window — an admitted bias</h2>
+    <p>
+      To the person who built this, the golden age of this music is
+      <strong class="k">1995–2003</strong>. So that is the window the index is seeded from and bounded
+      to (SIEVE ①). This boundary is <em>arbitrary</em> — Slint's <em>Spiderland</em> (1991) and plenty
+      after 2003 matter just as much — and it is stated here rather than hidden behind a claim of
+      objectivity. The hand-curated core reaches a little outside it where a record is foundational; the
+      automated expansion does not.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="no">06</span> What's in here right now</h2>
+    <div class="stats" id="stats">
+      <div class="s core"><span class="n" id="s-core">—</span><span class="l">curated nodes</span></div>
+      <div class="s auto"><span class="n" id="s-auto">—</span><span class="l">added by crawl</span></div>
+      <div class="s"><span class="n" id="s-total">—</span><span class="l">total nodes</span></div>
+      <div class="s"><span class="n" id="s-credits">—</span><span class="l">album credits</span></div>
+    </div>
+    <p class="muted">
+      Counts are read live from the same data file the graph uses. Anything the pipeline added carries a
+      <code>src:"mb"</code> tag; the curated core carries none — so the two are always separable, and
+      nothing automated can quietly overwrite a hand-checked entry.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="no">07</span> Honest limitations</h2>
+    <ul class="notes">
+      <li>MusicBrainz is community-sourced; a credit can be wrong or a release mis-dated. The curated core is checked; the crawl is not, beyond the sieves.</li>
+      <li>Network-first means off-genre detours stay by design — if an indexed engineer recorded a rock legend or a Celtic-punk band, they're in. That's a feature, not an error.</li>
+      <li>The 1995–2003 window is one person's bias. Records you love are missing because of an arbitrary line. See §05.</li>
+      <li>A force-directed graph gets dense fast; legibility is traded for showing the whole web. Use the filters and search a name to see its neighbourhood.</li>
+      <li>The pipeline is resumable and rate-limited to be a good citizen of the free APIs it depends on.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span><span class="cat">INDX&middot;001</span> · method rev. 2026</span>
+    <span><a href="index.html">← back to the graph</a></span>
+  </footer>
+</div>
+
+<script>
+  fetch("data.json").then(r => r.json()).then(d => {
+    const nodes = d.nodes || [];
+    const auto = nodes.filter(n => n.src === "mb").length;
+    document.getElementById("s-core").textContent = nodes.length - auto;
+    document.getElementById("s-auto").textContent = auto;
+    document.getElementById("s-total").textContent = nodes.length;
+    document.getElementById("s-credits").textContent = (d.links || []).filter(l => l.album).length;
+  }).catch(() => {});
+</script>
+</body>
+</html>
