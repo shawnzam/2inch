@@ -104,7 +104,14 @@ async def run(args):
     seed = args.seed or engineers
     if args.grow:
         log(f"  grow: asking Claude for {args.grow} more in-scope engineers/producers…")
-        nom = await claude_tools.suggest_engineers(engineers, args.grow, model=args.model)
+        nom = []
+        for attempt in (1, 2):                       # one hung claude call shouldn't kill the round
+            try:
+                nom = await claude_tools.suggest_engineers(engineers, args.grow, model=args.model)
+                break
+            except Exception as e:
+                log(f"  grow: nomination attempt {attempt} failed ({type(e).__name__}); "
+                    + ("retrying…" if attempt == 1 else "proceeding with no new seeds"))
         fresh = [e for e in nom if e not in ids and e not in seed]
         log(f"  grow: {len(fresh)} new engineers to crawl: {fresh}")
         seed = seed + fresh
