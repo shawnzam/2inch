@@ -168,6 +168,13 @@
   ul.disco li .cover::after { content: "♪"; position: absolute; inset: 0; display: flex;
     align-items: center; justify-content: center; color: var(--ink-3); font-size: 13px; }
   ul.disco li .cover.has::after { content: ""; }
+  ul.disco li .cover.playable { cursor: pointer; }
+  ul.disco li .cover .pbtn { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; color: #fff; background: rgba(0,0,0,0.4); font-size: 13px;
+    opacity: 0; transition: opacity .15s; }
+  ul.disco li .cover .pbtn::after { content: "▶"; }
+  ul.disco li .cover.playable:hover .pbtn, ul.disco li .cover.playing .pbtn { opacity: 1; }
+  ul.disco li .cover.playing .pbtn::after { content: "⏸"; }
   a.ext { color: var(--ink-2); text-decoration: none; border: 1px solid var(--ink-3);
     padding: 0 5px; font-size: 12px; line-height: 18px; flex: none; }
   a.ext:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
@@ -208,12 +215,25 @@
     opacity: 0; transition: opacity .15s; font-style: italic; }
   .link-label.visible { opacity: 1; }
 
+  /* mobile filters toggle — hidden on desktop */
+  .ctrl-toggle { display: none; }
+
   @media (max-width: 760px) {
-    header { grid-template-columns: 1fr; gap: 8px; }
+    header { grid-template-columns: 1fr; gap: 8px; padding: 10px 14px; }
+    .masthead h1 { font-size: 34px; }
+    .stats { gap: 12px; }
     .stats, .colophon { justify-self: start; text-align: left; }
     #sidebar { width: 100%; position: absolute; right: 0; top: 0; bottom: 0; z-index: 200; }
     #sidebar.collapsed { margin-right: -100%; }
-    .controls { width: 210px; }
+    /* controls slide in from the left; hidden by default so the graph is usable */
+    .ctrl-toggle { display: block; position: absolute; top: 12px; left: 12px; z-index: 70;
+      background: var(--ink); color: var(--paper); border: 1.5px solid var(--ink);
+      font-family: inherit; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+      padding: 8px 12px; cursor: pointer; }
+    .controls { width: 250px; max-width: 88vw; max-height: 86vh; overflow-y: auto;
+      transform: translateX(-115%); transition: transform .2s ease; box-shadow: 4px 0 20px rgba(0,0,0,.18); }
+    .controls.open { transform: none; }
+    .controls .panel:first-child { margin-top: 44px; }   /* clear the toggle button */
   }
 </style>
 </head>
@@ -242,7 +262,8 @@
 
   <div id="body">
     <div id="graph">
-      <div class="controls">
+      <button id="ctrlToggle" class="ctrl-toggle" aria-label="toggle filters">≡ filters</button>
+      <div class="controls" id="controls">
         <div class="panel">
           <div class="ptitle"><span>Filter the index</span></div>
           <input type="text" id="search" placeholder="search name…" autocomplete="off">
@@ -267,6 +288,13 @@
           <input type="text" id="mbInput" placeholder="any producer / engineer…" autocomplete="off">
           <div style="font-size:9px;color:var(--ink-2);margin:6px 0 7px;line-height:1.5">Pull real release credits from the live MusicBrainz database — beyond the curated index.</div>
           <button class="btn" id="mbBtn">Look up →</button>
+        </div>
+
+        <div class="panel">
+          <div class="ptitle"><span>Trace a path</span><span class="muted">six degrees</span></div>
+          <input type="text" id="pathA" placeholder="from… e.g. Steve Albini" autocomplete="off">
+          <input type="text" id="pathB" placeholder="to… e.g. Nigel Godrich" autocomplete="off" style="margin-top:6px">
+          <button class="btn" id="pathBtn" style="margin-top:7px">Find path →</button>
         </div>
 
         <div class="panel">
@@ -323,7 +351,8 @@ const discogsUrl = (q, type) => `https://www.discogs.com/search/?q=${enc(q)}&typ
 const mbUrl = (q, type) => `https://musicbrainz.org/search?query=${enc(q)}&type=${type||'artist'}`;
 
 // album-art cache (iTunes Search API — single fetch, CORS-enabled, no key)
-const artCache = {};
+// album art (on load) + 30s audio preview (on click) — both via the iTunes Search API
+const artCache = {};   // q -> { art, cid, preview? }
 async function loadArt() {
   const els = document.querySelectorAll('.cover[data-q]');
   for (const el of els) {
@@ -332,11 +361,37 @@ async function loadArt() {
       try {
         const r = await fetch(`https://itunes.apple.com/search?term=${enc(q)}&entity=album&limit=1`);
         const j = await r.json();
-        artCache[q] = (j.results && j.results[0]) ? j.results[0].artworkUrl100.replace('100x100bb','300x300bb') : null;
-      } catch (e) { artCache[q] = null; }
+        const res = j.results && j.results[0];
+        artCache[q] = res ? { art: res.artworkUrl100.replace('100x100bb','300x300bb'), cid: res.collectionId }
+                          : { art: null, cid: null };
+      } catch (e) { artCache[q] = { art: null, cid: null }; }
     }
-    if (artCache[q]) { el.style.backgroundImage = `url("${artCache[q]}")`; el.classList.add('has'); }
+    const c = artCache[q];
+    if (c.art) { el.style.backgroundImage = `url("${c.art}")`; el.classList.add('has'); }
+    if (c.cid) { el.classList.add('playable'); el.dataset.pq = q;
+      el.insertAdjacentHTML('beforeend', '<span class="pbtn"></span>'); }
   }
+}
+
+// one shared audio element; clicking a cover plays a 30s clip from that album
+const player = new Audio();
+let playingCover = null;
+player.addEventListener('ended', () => { if (playingCover) { playingCover.classList.remove('playing'); playingCover = null; } });
+async function togglePlay(el) {
+  const c = artCache[el.dataset.pq];
+  if (!c || !c.cid) return;
+  if (playingCover === el && !player.paused) { player.pause(); el.classList.remove('playing'); return; }
+  if (c.preview === undefined) {
+    try {
+      const r = await fetch(`https://itunes.apple.com/lookup?id=${c.cid}&entity=song&limit=1`);
+      const j = await r.json();
+      const t = (j.results || []).find(x => x.previewUrl);
+      c.preview = t ? t.previewUrl : null;
+    } catch (e) { c.preview = null; }
+  }
+  if (!c.preview) return;
+  if (playingCover) playingCover.classList.remove('playing');
+  player.src = c.preview; player.play().catch(() => {}); playingCover = el; el.classList.add('playing');
 }
 
 let simulation, link, node, label, linkLabel, zoom;
@@ -382,7 +437,10 @@ function init() {
   };
 
   let activeNodes;
-  if (focusId && nodes.some(n => n.id === focusId)) {
+  if (pathIds && pathIds.size) {
+    // Path-finding: show only the chain connecting two people.
+    activeNodes = nodes.filter(n => pathIds.has(n.id));
+  } else if (focusId && nodes.some(n => n.id === focusId)) {
     // Click-to-focus: re-center on one node + its connections. Click a neighbor to walk on.
     activeNodes = ego(new Set([focusId]));
   } else if (query) {
@@ -584,16 +642,93 @@ function jumpTo(name) {
 }
 function closeCard() { document.getElementById("sidebar").classList.add("collapsed"); }
 
+// Sidebar view for a traced path: A —[album]→ B —[album]→ C …
+function showPathCard(seq) {
+  const c = document.getElementById("sidebarContent");
+  const hops = seq.length - 1;
+  let h = `<div class="card-top"><button class="close-btn" onclick="closeCard()">×</button>
+    <div class="kind" style="color:var(--label)">Path · ${hops} hop${hops === 1 ? "" : "s"}</div>
+    <h2>${seq[0]} → ${seq[seq.length - 1]}</h2></div><div class="card-body"><ul class="disco">`;
+  for (let i = 0; i < seq.length; i++) {
+    const n = nodes.find(x => x.id === seq[i]);
+    const accent = color[n ? n.type : "artist"];
+    h += `<li class="eng" style="border-left-color:${accent}"><span class="meta"><strong>${seq[i]}</strong>`;
+    if (i < seq.length - 1) {
+      const l = links.find(l => l.album &&
+        ((ID(l.source) === seq[i] && ID(l.target) === seq[i + 1]) ||
+         (ID(l.target) === seq[i] && ID(l.source) === seq[i + 1])));
+      h += `<span class="who">↓ ${l ? l.album + (l.year ? ` (${l.year})` : "") : "—"}</span>`;
+    }
+    h += `</span><a class="ext" onclick="focusNode('${seq[i].replace(/'/g, "\\'")}');return false" href="#" title="focus this node">↗</a></li>`;
+  }
+  h += `</ul></div>`;
+  c.innerHTML = h;
+  document.getElementById("sidebar").classList.remove("collapsed");
+}
+
 // Click a node → recenter the graph on it (ego-network) and open its card.
 // Click a visible neighbour to walk on; click empty space to reset to the full graph.
 function focusNode(id) {
+  pathIds = null;
   focusId = id;
   document.getElementById("search").value = "";   // focus drives the view now
+  document.getElementById("controls").classList.remove("open");   // reveal graph on mobile
+  setHash(id);
   init();
   const n = nodes.find(x => x.id === id);
   if (n) showCard(n);
 }
-function clearFocus() { focusId = null; }
+function clearFocus() { focusId = null; pathIds = null; setHash(null); }
+
+// ── Shareable deep-links: #steve-albini lands focused on that node ──
+const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+let slugToId = {};
+function buildSlugs() { slugToId = {}; nodes.forEach(n => { slugToId[slugify(n.id)] = n.id; }); }
+function setHash(id) {
+  const h = id ? "#" + slugify(id) : "";
+  history.replaceState(null, "", h || location.pathname + location.search);
+}
+function applyHash() {
+  const id = slugToId[decodeURIComponent(location.hash.slice(1))];
+  if (id && id !== focusId) focusNode(id);
+}
+
+// ── Path-finding: shortest chain between two people (six degrees) ──
+let pathIds = null, pathSeq = [];
+function shortestPath(aId, bId) {
+  const adj = new Map();
+  links.forEach(l => {
+    const s = ID(l.source), t = ID(l.target);
+    (adj.get(s) || adj.set(s, []).get(s)).push(t);
+    (adj.get(t) || adj.set(t, []).get(t)).push(s);
+  });
+  const prev = { [aId]: null }, q = [aId];
+  while (q.length) {
+    const cur = q.shift();
+    if (cur === bId) break;
+    for (const nb of (adj.get(cur) || [])) if (!(nb in prev)) { prev[nb] = cur; q.push(nb); }
+  }
+  if (!(bId in prev)) return null;
+  const path = []; for (let c = bId; c !== null; c = prev[c]) path.unshift(c);
+  return path;
+}
+function resolveName(s) {
+  s = s.toLowerCase().trim(); if (!s) return null;
+  const exact = nodes.find(n => n.id.toLowerCase() === s);
+  return (exact || nodes.find(n => n.id.toLowerCase().includes(s)) || {}).id || null;
+}
+function tracePath() {
+  const aId = resolveName(document.getElementById("pathA").value);
+  const bId = resolveName(document.getElementById("pathB").value);
+  if (!aId || !bId) { alert("Couldn't find one of those names."); return; }
+  const seq = shortestPath(aId, bId);
+  if (!seq) { alert(`No path found between ${aId} and ${bId}.`); return; }
+  focusId = null; document.getElementById("search").value = "";
+  document.getElementById("controls").classList.remove("open");
+  pathSeq = seq; pathIds = new Set(seq);
+  init();
+  showPathCard(seq);
+}
 
 // ════════════════════════════════════════════════════════════════
 //  LIVE LOOKUP — MusicBrainz (no key, CORS-enabled, ~1 req/sec)
@@ -669,9 +804,22 @@ document.getElementById("mbInput").addEventListener("keydown", e => {
 svg.on("click", () => { clearFocus(); closeCard(); init(); });
 window.addEventListener("resize", () => { dims(); if (simulation) { simulation.force("center", d3.forceCenter(width/2, height/2)); simulation.alpha(0.3).restart(); } });
 
+// path-finding
+document.getElementById("pathBtn").addEventListener("click", tracePath);
+["pathA", "pathB"].forEach(id => document.getElementById(id).addEventListener("keydown", e => { if (e.key === "Enter") tracePath(); }));
+// audio: click a cover thumbnail to play its 30s preview
+document.getElementById("sidebarContent").addEventListener("click", e => {
+  const el = e.target.closest(".cover.playable"); if (el) togglePlay(el);
+});
+// mobile: toggle the controls panel; auto-close it after picking a node
+const ctrls = document.getElementById("controls");
+document.getElementById("ctrlToggle").addEventListener("click", () => ctrls.classList.toggle("open"));
+// shareable deep-links
+window.addEventListener("hashchange", applyHash);
+
 fetch("data.json")
   .then(r => r.json())
-  .then(d => { nodes = d.nodes; links = d.links; buildSceneFilter(); init(); })
+  .then(d => { nodes = d.nodes; links = d.links; buildSceneFilter(); buildSlugs(); init(); applyHash(); })
   .catch(e => console.error("Failed to load data.json", e));
 </script>
 </body>
