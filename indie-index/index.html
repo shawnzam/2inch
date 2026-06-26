@@ -292,9 +292,10 @@
 
         <div class="panel">
           <div class="ptitle"><span>Trace a path</span><span class="muted">six degrees</span></div>
-          <input type="text" id="pathA" placeholder="from… e.g. Steve Albini" autocomplete="off">
-          <input type="text" id="pathB" placeholder="to… e.g. Nigel Godrich" autocomplete="off" style="margin-top:6px">
+          <input type="text" id="pathA" placeholder="from… e.g. Steve Albini" list="nodeNames" autocomplete="off">
+          <input type="text" id="pathB" placeholder="to… e.g. Nigel Godrich" list="nodeNames" autocomplete="off" style="margin-top:6px">
           <button class="btn" id="pathBtn" style="margin-top:7px">Find path →</button>
+          <datalist id="nodeNames"></datalist>
         </div>
 
         <div class="panel">
@@ -684,6 +685,10 @@ function clearFocus() { focusId = null; pathIds = null; setHash(null); }
 const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 let slugToId = {};
 function buildSlugs() { slugToId = {}; nodes.forEach(n => { slugToId[slugify(n.id)] = n.id; }); }
+function buildNameList() {
+  document.getElementById("nodeNames").innerHTML =
+    nodes.map(n => n.id).sort((a, b) => a.localeCompare(b)).map(id => `<option value="${esc(id)}">`).join("");
+}
 function setHash(id) {
   const h = id ? "#" + slugify(id) : "";
   history.replaceState(null, "", h || location.pathname + location.search);
@@ -819,7 +824,7 @@ window.addEventListener("hashchange", applyHash);
 
 fetch("data.json")
   .then(r => r.json())
-  .then(d => { nodes = d.nodes; links = d.links; buildSceneFilter(); buildSlugs(); init(); applyHash(); })
+  .then(d => { nodes = d.nodes; links = d.links; buildSceneFilter(); buildSlugs(); buildNameList(); init(); applyHash(); })
   .catch(e => console.error("Failed to load data.json", e));
 </script>
 </body>
