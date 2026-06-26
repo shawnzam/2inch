@@ -178,10 +178,12 @@
   a.ext { color: var(--ink-2); text-decoration: none; border: 1px solid var(--ink-3);
     padding: 0 5px; font-size: 12px; line-height: 18px; flex: none; }
   a.ext:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-  .canon { display: flex; gap: 6px; margin-top: 10px; }
-  .canon a { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; text-decoration: none;
-    color: var(--ink); border: 1px solid var(--ink); padding: 4px 8px; }
-  .canon a:hover { background: var(--ink); color: var(--paper); }
+  .canon { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .canon a, .canon button { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; text-decoration: none;
+    color: var(--ink); border: 1px solid var(--ink); padding: 4px 8px; font-family: inherit;
+    background: none; cursor: pointer; }
+  .canon a:hover, .canon button:hover { background: var(--ink); color: var(--paper); }
+  .canon button.copied { background: var(--rust); border-color: var(--rust); color: var(--paper); }
   .chiprow { display: flex; flex-wrap: wrap; gap: 5px; }
   .chip { font-size: 10px; padding: 3px 7px; border: 1px solid var(--ink); background: var(--paper);
     cursor: pointer; }
@@ -572,6 +574,7 @@ function showCard(d) {
     <h2>${d.id}</h2>
     <span class="badge" style="color:${accent};border-color:${accent};margin-top:8px">${albums.length} credit${albums.length===1?'':'s'}</span>
     <div class="canon">
+      <button onclick="copyShareLink(this)">Copy link</button>
       <a href="${discogsUrl(d.id, dgType)}" target="_blank" rel="noopener">Discogs ↗</a>
       <a href="${mbHref}" target="_blank" rel="noopener">MusicBrainz ↗</a>
     </div>
@@ -643,13 +646,23 @@ function jumpTo(name) {
 }
 function closeCard() { document.getElementById("sidebar").classList.add("collapsed"); }
 
+// Copy the current shareable URL (the address bar already reflects the focused node / traced path).
+function copyShareLink(btn) {
+  const url = location.href;
+  const ok = () => { btn.classList.add("copied"); const t = btn.textContent; btn.textContent = "copied ✓";
+    setTimeout(() => { btn.textContent = t; btn.classList.remove("copied"); }, 1500); };
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(ok).catch(() => prompt("Copy this link:", url));
+  else prompt("Copy this link:", url);
+}
+
 // Sidebar view for a traced path: A —[album]→ B —[album]→ C …
 function showPathCard(seq) {
   const c = document.getElementById("sidebarContent");
   const hops = seq.length - 1;
   let h = `<div class="card-top"><button class="close-btn" onclick="closeCard()">×</button>
     <div class="kind" style="color:var(--label)">Path · ${hops} hop${hops === 1 ? "" : "s"}</div>
-    <h2>${seq[0]} → ${seq[seq.length - 1]}</h2></div><div class="card-body"><ul class="disco">`;
+    <h2>${seq[0]} → ${seq[seq.length - 1]}</h2>
+    <div class="canon"><button onclick="copyShareLink(this)">Copy link</button></div></div><div class="card-body"><ul class="disco">`;
   for (let i = 0; i < seq.length; i++) {
     const n = nodes.find(x => x.id === seq[i]);
     const accent = color[n ? n.type : "artist"];
