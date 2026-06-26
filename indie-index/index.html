@@ -689,22 +689,23 @@ function buildNameList() {
   document.getElementById("nodeNames").innerHTML =
     nodes.map(n => n.id).sort((a, b) => a.localeCompare(b)).map(id => `<option value="${esc(id)}">`).join("");
 }
+// Permalinks use ?query (not #hash) so the edge can read them for dynamic share previews.
 function setHash(id) {
-  const h = id ? "#" + slugify(id) : "";
-  history.replaceState(null, "", h || location.pathname + location.search);
+  history.replaceState(null, "", id ? "?n=" + slugify(id) : location.pathname);
 }
 function setPathHash(aId, bId) {
-  history.replaceState(null, "", `#path/${slugify(aId)}/${slugify(bId)}`);
+  history.replaceState(null, "", `?p=${slugify(aId)},${slugify(bId)}`);
 }
 function applyHash() {
-  const raw = decodeURIComponent(location.hash.slice(1));
-  if (raw.startsWith("path/")) {                       // #path/from/to → recompute the chain
-    const [, a, b] = raw.split("/");
+  const sp = new URLSearchParams(location.search);
+  const p = sp.get("p"), n = sp.get("n");
+  if (p) {                                             // ?p=from,to → recompute the chain
+    const [a, b] = p.split(",");
     const aId = slugToId[a], bId = slugToId[b];
     if (aId && bId) tracePathBetween(aId, bId, true);
     return;
   }
-  const id = slugToId[raw];
+  const id = slugToId[n];
   if (id && id !== focusId) focusNode(id);
 }
 
@@ -836,8 +837,7 @@ document.getElementById("sidebarContent").addEventListener("click", e => {
 // mobile: toggle the controls panel; auto-close it after picking a node
 const ctrls = document.getElementById("controls");
 document.getElementById("ctrlToggle").addEventListener("click", () => ctrls.classList.toggle("open"));
-// shareable deep-links
-window.addEventListener("hashchange", applyHash);
+// shareable deep-links (?n / ?p) — read on load; updated in-place as you explore
 
 fetch("data.json")
   .then(r => r.json())
