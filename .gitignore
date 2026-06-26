@@ -14,3 +14,6 @@ pipeline/.cache/
 
 # Pipeline scratch output
 indie-index/data.preview.json
+
+# Node deps for Pages Functions
+node_modules/

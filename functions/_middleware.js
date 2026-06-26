@@ -58,14 +58,18 @@ export async function onRequest(context) {
     desc = `${N.id} — ${kind}${c ? `, ${c} credit${c === 1 ? "" : "s"}` : ""} in the indie recording network, 1995–2003.`;
   }
 
+  const ogImg = esc(new URL("/og?" + (p ? "p=" + encodeURIComponent(p) : "n=" + encodeURIComponent(n)), url).toString());
   const T = esc(title), D = esc(desc), U = esc(url.toString());
   const html = (await res.text())
     .replace(/(<title>)[^<]*(<\/title>)/, `$1${T}$2`)
     .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${T}$2`)
     .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${D}$2`)
     .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${U}$2`)
+    .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${ogImg}$2`)
+    .replace(/(<meta property="og:image:secure_url" content=")[^"]*(")/, `$1${ogImg}$2`)
     .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${T}$2`)
     .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${D}$2`)
+    .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${ogImg}$2`)
     .replace(/(<meta name="description" content=")[^"]*(")/, `$1${D}$2`);
 
   return new Response(html, { status: res.status, headers: { "content-type": "text/html; charset=utf-8" } });

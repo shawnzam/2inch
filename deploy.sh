@@ -13,6 +13,7 @@ export CLOUDFLARE_API_TOKEN="$(cat "$TOKEN_FILE")"
 export CLOUDFLARE_ACCOUNT_ID="37fb40649f6dbbb1625fc0b876103f6f"
 
 cd "$(dirname "$0")"
+[ -d node_modules ] || npm install   # Pages Functions deps (workers-og, for dynamic OG images)
 npx wrangler pages deploy indie-index --project-name=2inch --branch=main
 
 echo

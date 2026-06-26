@@ -1,0 +1,8 @@
+{
+  "name": "2inch",
+  "private": true,
+  "description": "Pages Functions deps for 2inch (dynamic OG images)",
+  "dependencies": {
+    "workers-og": "^0.0.25"
+  }
+}
