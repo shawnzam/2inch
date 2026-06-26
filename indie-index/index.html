@@ -693,8 +693,18 @@ function setHash(id) {
   const h = id ? "#" + slugify(id) : "";
   history.replaceState(null, "", h || location.pathname + location.search);
 }
+function setPathHash(aId, bId) {
+  history.replaceState(null, "", `#path/${slugify(aId)}/${slugify(bId)}`);
+}
 function applyHash() {
-  const id = slugToId[decodeURIComponent(location.hash.slice(1))];
+  const raw = decodeURIComponent(location.hash.slice(1));
+  if (raw.startsWith("path/")) {                       // #path/from/to → recompute the chain
+    const [, a, b] = raw.split("/");
+    const aId = slugToId[a], bId = slugToId[b];
+    if (aId && bId) tracePathBetween(aId, bId, true);
+    return;
+  }
+  const id = slugToId[raw];
   if (id && id !== focusId) focusNode(id);
 }
 
@@ -726,11 +736,18 @@ function tracePath() {
   const aId = resolveName(document.getElementById("pathA").value);
   const bId = resolveName(document.getElementById("pathB").value);
   if (!aId || !bId) { alert("Couldn't find one of those names."); return; }
+  tracePathBetween(aId, bId, false);
+}
+function tracePathBetween(aId, bId, fromHash) {
   const seq = shortestPath(aId, bId);
-  if (!seq) { alert(`No path found between ${aId} and ${bId}.`); return; }
-  focusId = null; document.getElementById("search").value = "";
+  if (!seq) { if (!fromHash) alert(`No path found between ${aId} and ${bId}.`); return; }
+  focusId = null;
+  document.getElementById("pathA").value = aId;
+  document.getElementById("pathB").value = bId;
+  document.getElementById("search").value = "";
   document.getElementById("controls").classList.remove("open");
   pathSeq = seq; pathIds = new Set(seq);
+  setPathHash(aId, bId);                                // make the path shareable
   init();
   showPathCard(seq);
 }
