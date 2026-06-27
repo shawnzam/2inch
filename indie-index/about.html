@@ -6,7 +6,7 @@
 <title>2″ — method &amp; sources</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="robots" content="index">
-<meta name="description" content="How 2″ is built: a cycle of sieves — a MusicBrainz crawl filtered by year, a Claude notability sieve, and dedup — with verbatim prompts and an admitted 1995–2003 bias.">
+<meta name="description" content="I started with twelve names and let an LLM sieve find the rest. The method behind 2inch.fm, with the prompts published in full. The trick was never letting the machine make anything up.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
@@ -36,7 +36,7 @@
   header .lead a { color:var(--rust); font-size:11px; text-decoration:none; letter-spacing:.06em; text-transform:uppercase; }
   header .lead a:hover { text-decoration:underline; }
 
-  .standfirst { font-size:14px; color:var(--ink); margin:26px 0 8px; line-height:1.6; }
+  .standfirst { font-size:14px; color:var(--ink); margin:26px 0 8px; line-height:1.62; }
   .standfirst b { color:var(--rust); }
 
   section { margin-top:38px; }
@@ -49,6 +49,8 @@
   a.ext { color:var(--rust); text-decoration:none; border-bottom:1px solid var(--ink-3); }
   a.ext:hover { border-color:var(--rust); }
   strong.k { color:var(--ink); }
+  blockquote.pull { font-size:15.5px; color:var(--rust); border-left:3px solid var(--rust);
+    padding:2px 0 2px 18px; margin:16px 0; max-width:70ch; line-height:1.5; }
 
   /* cycle-of-sieves diagram */
   figure.diagram { margin:6px 0 14px; padding:18px 10px 10px; background:var(--paper-2);
@@ -112,15 +114,39 @@
   </header>
 
   <p class="standfirst">
-    <b>2″</b> is built by a <b>cycle of sieves</b>. A crawler pulls recording credits from an open
-    database; a chain of filters throws out everything that isn't a real, in-window record; and a
-    language model nominates the next batch of people to crawl — round after round. This page
-    documents that process first, then the sources, then the literal prompts. No claims of taste
-    are made on your behalf. Here is the method; judge it.
+    This is a map of who actually made the records — the people behind the glass. The engineers, the
+    producers, the studios. It didn't start with a database or a spreadsheet. It started with
+    <b>twelve names</b> I'd vouch for without thinking: Steve Albini, John McEntire, Bob Weston, and
+    nine more like them. That's the whole seed. Everything else grew out of those twelve through a
+    process I keep calling <b>the sieve</b>. The trick was never letting the machine make anything up.
+    This page is the method, with the prompts published in full; the longer story is
+    <a class="ext" href="https://zamechek.com/blog/the-sieve-growing-from-a-seed/" target="_blank" rel="noopener">on my blog</a>. Judge it.
   </p>
 
   <section>
-    <h2><span class="no">01</span> The process — a cycle of sieves</h2>
+    <h2><span class="no">01</span> The one rule that makes it trustworthy</h2>
+    <p>
+      Every <em>let an LLM build my dataset</em> project fails the same way: the model fabricates. It
+      invents a plausible credit that never happened and hands it to you with total confidence. So the
+      model gets exactly one job, and I made it a rule.
+    </p>
+    <blockquote class="pull">
+      The LLM is a filter, not a source. The data comes from a structured API and is parsed by code.
+      The model only throws out junk and suggests where to look next.
+    </blockquote>
+    <p>
+      It can't invent a credit because it never writes one. That single constraint is the difference
+      between a verifiable graph and a confident hallucination.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="no">02</span> The cycle of sieves</h2>
+    <p>
+      The graph grows in <strong class="k">rounds</strong>. Each round starts from engineers I already
+      trust, crawls their credits out of MusicBrainz, and runs everything that comes back through three
+      sieves before a single node is added.
+    </p>
     <figure class="diagram">
       <svg viewBox="0 0 740 462" role="img" aria-label="Pipeline diagram: seed, crawl, three sieves, merge, and a loop back to seed.">
         <defs>
@@ -176,29 +202,17 @@
       </div>
       <figcaption>seed → crawl → three sieves → merge → repeat</figcaption>
     </figure>
-    <p>
-      The graph grows in <strong class="k">rounds</strong>. Each round starts from engineers we already
-      trust, crawls their credits, runs everything through three sieves, and merges what survives. Then a
-      language model nominates more in-scope engineers — the hubs that connect the scene — and the cycle
-      repeats. Nothing is invented: every node is a real credit that passed every sieve.
-    </p>
     <ol class="sieves">
-      <li><b>Year sieve — 1995–2003.</b> A hard filter in code. Anything outside the window is dropped before anything else looks at it. (Why this window: see §05.)</li>
-      <li><b>Notability sieve — Claude.</b> The only place a language model touches the data. It removes obvious noise — compilations posing as artists, DJ mixes, mis-parsed text, total unknowns — and nothing else. It does not judge genre, era, or worth. Exact prompt in §03.</li>
-      <li><b>Dedup sieve.</b> Anything already in the index — curated or previously crawled — is dropped, so the same record can't be added twice.</li>
+      <li><b>Sieve ① — the year window, 1995 to 2003.</b> My admitted bias, enforced in code. Cheap, exact, no model. Anything outside the window is gone before the rest even looks at it.</li>
+      <li><b>Sieve ② — notability.</b> The only place the language model touches the data. It looks at each newly-discovered band and answers one yes/no question: is this a real, notable act, or is it noise? It kills the "Various Artists" rows, the mis-parsed garbage, the DJ-Mix-Volume-7s. It does not judge taste or genre, and when it's unsure, it keeps. The exact prompt is in §03.</li>
+      <li><b>Sieve ③ — dedup.</b> Anything already in the index is dropped, so the same record can't land twice.</li>
     </ol>
-  </section>
-
-  <section>
-    <h2><span class="no">02</span> What the model does — and doesn't</h2>
     <p>
-      The language model is a <strong class="k">sieve, not a curator</strong>. It does not decide who
-      belongs in the scene, does not rank, and does not write biographies. The crawl is
-      <em>network-first</em>: keep almost everything a real engineer recorded. The model's only jobs are
-      (a) throwing out obvious noise at SIEVE ②, and (b) nominating the next round's engineers. Where it
-      is unsure, the rule is <em>keep</em> — we would rather carry a few odd inclusions, visibly tagged,
-      than silently delete something real. Era is enforced in <em>code</em> (SIEVE ①), not by the model,
-      so it can't double-penalise.
+      The clever part is the loop. After merging, I ask the model to nominate more engineers I don't have
+      yet — hubs from the same scene. That's the only generative thing it does, and even there it's
+      proposing search terms, not facts. Those names seed the next round and get sieved like everything
+      else. You know you're done when the nominations start coming back as names you already have. The
+      well runs dry; the scene is saturated.
     </p>
   </section>
 
@@ -236,57 +250,64 @@ array of name strings, nothing else.</pre>
   </section>
 
   <section>
-    <h2><span class="no">04</span> Data sources</h2>
-    <table class="src">
-      <tr><td class="h">Curated core</td><td>Hand-built and hand-verified from album liner notes, label pages, AllMusic, Tape Op and Sound on Sound. Every credit double-checked. This is the spine.</td></tr>
-      <tr><td class="h">Expansion</td><td>A crawl of <a class="ext" href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a> (open, CC0). One request per person returns role + album + year + performing band; parsing is deterministic — no language model reads the data.</td></tr>
-      <tr><td class="h">Vetting</td><td>A single language model (<strong class="k">Claude Sonnet</strong>) runs SIEVE ② and the engineer nomination. It judges nothing about taste, genre, or era — see §02–§03.</td></tr>
-      <tr><td class="h">Album art</td><td>Fetched on demand from the iTunes Search API, cached per session. Not stored.</td></tr>
-      <tr><td class="h">Outbound links</td><td>Every entry links to <a class="ext" href="https://www.discogs.com" target="_blank" rel="noopener">Discogs</a> and MusicBrainz so you can check the source yourself.</td></tr>
-      <tr><td class="h">Source code</td><td>The crawler, this site, and the methodology write-up are open source: <a class="ext" href="https://github.com/shawnzam/2inch" target="_blank" rel="noopener">github.com/shawnzam/2inch</a>.</td></tr>
-    </table>
+    <h2><span class="no">04</span> What the seed actually bought me</h2>
+    <p>
+      Everything the sieves let through is merged in and tagged <code>src:"mb"</code>, with the exact
+      MusicBrainz release ID on every edge, so each fact deep-links to the record it came from. The core
+      I typed by hand carries no tag at all. That means the part I personally vouch for and the part the
+      machine added are <strong class="k">always separable</strong>. One line trims all of it.
+    </p>
+    <p>
+      Twelve names became <strong class="k" id="p-total">—</strong> nodes without my ever trusting the
+      machine to tell the truth. The seed didn't just give the crawler a starting point — it gave the
+      whole system its standards. Every name I hand-picked dragged in a cluster of real collaborators,
+      and every one of those was checked against a source before it counted. That's the trade I'd make
+      every time: start from a small thing you can personally stand behind, and let a sieve — never an
+      author — grow it into something you couldn't have written down from memory.
+    </p>
   </section>
 
   <section>
-    <h2><span class="no">05</span> The window — an admitted bias</h2>
-    <p>
-      To the person who built this, the golden age of this music is
-      <strong class="k">1995–2003</strong>. So that is the window the index is seeded from and bounded
-      to (SIEVE ①). This boundary is <em>arbitrary</em> — Slint's <em>Spiderland</em> (1991) and plenty
-      after 2003 matter just as much — and it is stated here rather than hidden behind a claim of
-      objectivity. The hand-curated core reaches a little outside it where a record is foundational; the
-      automated expansion does not.
-    </p>
+    <h2><span class="no">05</span> Data sources</h2>
+    <table class="src">
+      <tr><td class="h">Curated core</td><td>The seed and the spine — typed and checked by hand from album liner notes, label pages, AllMusic, Tape Op and Sound on Sound. The part of the graph I personally vouch for. Carries no <code>src</code> tag.</td></tr>
+      <tr><td class="h">Expansion</td><td>A crawl of <a class="ext" href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a> (open, CC0). One request per person returns role + album + year + performing band; parsing is deterministic — no language model reads the data.</td></tr>
+      <tr><td class="h">The sieve</td><td>A single language model (<strong class="k">Claude Sonnet</strong>) runs Sieve ② and the nominations. It judges nothing about taste, genre, or era — see §01–§03.</td></tr>
+      <tr><td class="h">Album art &amp; audio</td><td>Cover art and 30-second previews are fetched on demand from the iTunes Search API. Not stored.</td></tr>
+      <tr><td class="h">Outbound links</td><td>Every entry deep-links to its <a class="ext" href="https://www.discogs.com" target="_blank" rel="noopener">Discogs</a> and MusicBrainz record, so you can check the source yourself.</td></tr>
+      <tr><td class="h">Source code</td><td>The crawler, this site, and the write-up are open: <a class="ext" href="https://github.com/shawnzam/2inch" target="_blank" rel="noopener">github.com/shawnzam/2inch</a>.</td></tr>
+    </table>
   </section>
 
   <section>
     <h2><span class="no">06</span> What's in here right now</h2>
     <div class="stats" id="stats">
-      <div class="s core"><span class="n" id="s-core">—</span><span class="l">curated nodes</span></div>
-      <div class="s auto"><span class="n" id="s-auto">—</span><span class="l">added by crawl</span></div>
+      <div class="s core"><span class="n" id="s-core">—</span><span class="l">curated by hand</span></div>
+      <div class="s auto"><span class="n" id="s-auto">—</span><span class="l">grown by the sieve</span></div>
       <div class="s"><span class="n" id="s-total">—</span><span class="l">total nodes</span></div>
       <div class="s"><span class="n" id="s-credits">—</span><span class="l">album credits</span></div>
     </div>
     <p class="muted">
-      Counts are read live from the same data file the graph uses. Anything the pipeline added carries a
-      <code>src:"mb"</code> tag; the curated core carries none — so the two are always separable, and
-      nothing automated can quietly overwrite a hand-checked entry.
+      Read live from the same file the graph loads. Everything the pipeline added carries a
+      <code>src:"mb"</code> tag; the core I built by hand carries none — so the two are always separable,
+      and nothing automated can quietly overwrite something I checked.
     </p>
   </section>
 
   <section>
     <h2><span class="no">07</span> Honest limitations</h2>
     <ul class="notes">
-      <li>MusicBrainz is community-sourced; a credit can be wrong or a release mis-dated. The curated core is checked; the crawl is not, beyond the sieves.</li>
+      <li>MusicBrainz is community-sourced; a credit can be wrong or a release mis-dated. The hand-curated core is checked; the crawl is not, beyond the sieves.</li>
       <li>Network-first means off-genre detours stay by design — if an indexed engineer recorded a rock legend or a Celtic-punk band, they're in. That's a feature, not an error.</li>
-      <li>The 1995–2003 window is one person's bias. Records you love are missing because of an arbitrary line. See §05.</li>
-      <li>A force-directed graph gets dense fast; legibility is traded for showing the whole web. Use the filters and search a name to see its neighbourhood.</li>
-      <li>The pipeline is resumable and rate-limited to be a good citizen of the free APIs it depends on.</li>
+      <li>1995 to 2003 is an arbitrary line I drew around my own golden age. Records you love are missing because of it.</li>
+      <li>Self-produced records (no separate engineer in the data) are invisible to an engineer-seeded crawl. An honest blind spot, not an oversight.</li>
+      <li>A force-directed graph gets dense fast; legibility is traded for showing the whole web. Search a name, or click a node, to pull its neighbourhood out of the tangle.</li>
     </ul>
   </section>
 
   <footer>
     <span><span class="cat">INDX&middot;001</span> · method rev. 2026</span>
+    <span><a href="https://zamechek.com/blog/the-sieve-growing-from-a-seed/" target="_blank" rel="noopener">the story ↗</a></span>
     <span><a href="https://github.com/shawnzam/2inch" target="_blank" rel="noopener">source on GitHub ↗</a></span>
     <span><a href="index.html">← back to the graph</a></span>
   </footer>
@@ -300,6 +321,8 @@ array of name strings, nothing else.</pre>
     document.getElementById("s-auto").textContent = auto;
     document.getElementById("s-total").textContent = nodes.length;
     document.getElementById("s-credits").textContent = (d.links || []).filter(l => l.album).length;
+    const pt = document.getElementById("p-total");
+    if (pt) pt.textContent = nodes.length;
   }).catch(() => {});
 </script>
 </body>
