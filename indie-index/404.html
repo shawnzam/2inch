@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2″ — dropout (404)</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper:#e7e0cf; --ink:#1b1a16; --ink-2:#6c6657; --ink-3:#97907c; --rust:#a8432c; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body { background:var(--paper); color:var(--ink); font-family:'Space Mono',ui-monospace,Menlo,monospace;
+    -webkit-font-smoothing:antialiased; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #grain { position:fixed; inset:0; z-index:90; pointer-events:none; opacity:.055; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  #frame { position:fixed; inset:9px; z-index:80; pointer-events:none; border:1.5px solid var(--ink); }
+  main { width:100%; max-width:620px; }
+  .badge { display:inline-block; font-family:'Archivo',sans-serif; font-weight:900; font-size:30px; line-height:1;
+    color:var(--rust); border:3px solid var(--rust); padding:2px 11px 5px; margin-bottom:30px; text-decoration:none;
+    background:rgba(168,67,44,0.05); box-shadow:2px 2px 0 rgba(168,67,44,0.18); }
+  h1 { font-family:'Archivo',sans-serif; font-weight:900; font-size:clamp(64px,16vw,132px); line-height:.85;
+    letter-spacing:-0.03em; text-transform:uppercase; }
+  .dek { font-size:14px; color:var(--ink-2); margin-top:18px; max-width:46ch; line-height:1.6; }
+  .slate { margin-top:26px; border:1.5px solid var(--ink); background:#221f1a; color:#e7e0cf;
+    font-size:12px; line-height:1.9; padding:14px 16px; overflow-x:auto; }
+  .slate .k { color:#b8862a; }
+  .slate .v { color:#e7e0cf; }
+  .slate .bad { color:#d2694f; }
+  .out { margin-top:26px; font-size:13px; }
+  .out a { color:var(--rust); text-decoration:none; border-bottom:1px solid var(--ink-3); }
+  .out a:hover { border-color:var(--rust); }
+</style>
+</head>
+<body>
+<div id="grain"></div>
+<div id="frame"></div>
+<main>
+  <a class="badge" href="/" title="back to the graph">2&Prime;</a>
+  <h1>Dropout.</h1>
+  <p class="dek">Signal present at request. Nothing made it to tape. This one isn't on the reel.</p>
+
+  <div class="slate">
+    <div><span class="k">REQUESTED</span>&nbsp;&nbsp;<span class="v" id="req">/</span></div>
+    <div><span class="k">STATUS&nbsp;&nbsp;&nbsp;</span>&nbsp;&nbsp;<span class="bad">404 · no signal</span></div>
+    <div><span class="k">TAKE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>&nbsp;&nbsp;<span class="v">unusable</span></div>
+  </div>
+
+  <p class="out">Check the URL, or just go play something → <a href="/">2inch.fm</a></p>
+</main>
+<script>
+  document.getElementById("req").textContent =
+    (location.pathname + location.search) || "/";
+</script>
+</body>
+</html>
