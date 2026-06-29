@@ -9,8 +9,12 @@ filter noise (never to invent data).
 
 ![2″](indie-index/og.png)
 
-Golden-age window **1995–2003** (an admitted bias). **469 nodes** — 170 hand-curated +
-299 crawl-added — and **620 album credits**, each one traceable to its source.
+Golden-age window **1995–2003** (an admitted bias). **535 nodes** — 170 hand-curated +
+365 grown by the sieve — and **695 album credits**, each one traceable to its source.
+
+Click any node to recenter on its web, search a name, trace a six-degrees path between two
+artists, play a 30-second preview of any record, and share any view: every URL deep-links
+(`?n=` for a node, `?p=` for a path) and unfurls in iMessage/Slack with its own preview card.
 
 ---
 
@@ -36,11 +40,15 @@ films ↔ crew, repos ↔ contributors…).
 |---|---|
 | `indie-index/index.html` | the whole front end — D3 v7 force graph, one self-contained file |
 | `indie-index/about.html` | the method page (cycle-of-sieves diagram + verbatim prompts) |
+| `indie-index/404.html` | the DROPOUT 404 (Cloudflare Pages serves it on missing routes) |
 | `indie-index/data.json` | the dataset — `{nodes, links}`, provenance-tagged |
+| `functions/` | Cloudflare Pages Functions (edge): dynamic Open Graph share previews per link |
 | `pipeline/` | the resumable Python crawler (stdlib + local `claude` binary) |
 | `pipeline/README.md` | how to run a crawl round |
-| `building-sieve-networks.md` | the methodology + D3 playbook |
+| `building-sieve-networks.md` | the methodology + D3 playbook (domain-agnostic) |
+| `AGENTS.md` | guide for agents (and humans) working in this repo |
 | `music_api_research.md` | early comparison of MusicBrainz vs Discogs |
+| `package.json` | deps for the Functions only (`workers-og`); the app + pipeline have none |
 | `deploy.sh` | one-command Cloudflare Pages deploy |
 
 ## The data
@@ -52,8 +60,16 @@ album credits. Provenance:
 - Each crawl **edge** stores the MusicBrainz **release id**; each **node** stores its
   **artist id** — so the UI deep-links every fact to its source.
 
-Credit data is from **MusicBrainz** (CC0). Album art is fetched live from the iTunes Search
-API (not stored).
+Credit data is from **MusicBrainz** (CC0). Album art and 30-second audio previews are
+fetched live from the iTunes Search API (not stored).
+
+## Hosting & cost
+
+On **Cloudflare Pages**. Static hosting (the site + data + images) is free and unlimited.
+The dynamic share-preview cards run as **Pages Functions** (`functions/`, using `workers-og`),
+which sit inside the **free Workers tier (100k requests/day)** at this scale — and on the free
+plan, exceeding that throttles requests rather than billing you, so there's no surprise charge.
+No build step for the app or pipeline; only the Functions pull a dependency.
 
 ## Run it
 

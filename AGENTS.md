@@ -14,6 +14,7 @@ Background: [`README.md`](README.md), [`building-sieve-networks.md`](building-si
 |---|---|
 | `indie-index/index.html` | the **entire** front end — D3 v7 (CDN), one self-contained file, **no build step** |
 | `indie-index/about.html` | method page (cycle-of-sieves diagram, verbatim prompts) |
+| `indie-index/404.html` | the DROPOUT 404 (Pages auto-serves it on missing routes) |
 | `indie-index/data.json` | the dataset: `{nodes, links}`, provenance-tagged. **The served source of truth.** |
 | `indie-index/{favicon.svg,og.png}` | static brand assets |
 | `pipeline/` | resumable Python crawler (stdlib only + local `claude` binary) |
@@ -34,6 +35,16 @@ python3 pipeline/backfill_node_mbids.py                 # resolve node MBIDs aft
 # deploy (needs ~/.cf_2inch_token; deploys site + Functions)
 bash deploy.sh
 ```
+
+## Hosting & cost
+
+Cloudflare Pages. Static hosting is free and unlimited. The `functions/` (dynamic OG
+previews via `workers-og`) run on the **free Workers tier — 100k requests/day** — and stay
+well within it at this scale. On the free plan, exceeding the cap **throttles (HTTP 429)
+rather than billing**, so there's no surprise charge. Caveat: `functions/_middleware.js`
+runs on **every** request (assets included), so each page view is a few invocations; if
+cost ever mattered, cache the `/og` PNGs (`cache-control` on the response) and scope the
+middleware to HTML documents only.
 
 ## Hard rules
 

@@ -169,6 +169,21 @@ if (query) {
 This is the difference between "cool but useless" and "I can actually explore this."
 Consider making an **ego view the default** once you're past ~500 nodes.
 
+### Click-to-focus, paths, and shareable views
+
+Three cheap additions turn a static graph into something people *use* and *share*:
+
+- **Click-to-focus.** Clicking a node recenters the graph on its ego-network; click a
+  neighbor to walk outward, click empty space to reset. The whole graph becomes navigable
+  node by node, which is how anyone actually reads a hairball.
+- **Path-finding (six degrees).** A breadth-first search over the link list returns the
+  shortest chain between any two nodes. For a relationship graph this is *the* signature
+  feature, and it's ~20 lines.
+- **Deep-linkable views.** Encode the current view in the URL (`?n=<node>`, `?p=<from>,<to>`)
+  and read it on load. Now every view is shareable and the address bar *is* the share button.
+  Use **`?query`, not `#hash`** — fragments never reach the server, which matters for the
+  dynamic share previews below.
+
 ### The detail panel (where provenance shows its work)
 
 Click a node → a sidebar with its relationships. This is where you **show your sources**:
@@ -206,8 +221,14 @@ cached in memory, so the initial load stays tiny.
   outputs too.
 - **Hosting:** Cloudflare Pages via `wrangler pages deploy`. Single static dir, a scoped API
   token for one-command redeploys, a custom domain (apex `CNAME → *.pages.dev`, proxied).
-- **Sharing:** add Open Graph + Twitter tags and a 1200×630 share image so the link unfurls
-  in iMessage/Slack/Discord.
+- **Sharing:** static Open Graph tags get you *a* preview; for one that's *specific to each
+  link* (this node's web, that six-degrees chain), render it at the edge. On Cloudflare Pages
+  a Function reads the `?query`, injects per-link `og:title`/`description`, and points
+  `og:image` at a second Function that renders a 1200×630 PNG with `workers-og` (satori +
+  resvg). It stays inside the **free Workers tier** at small scale. Gotchas: the `functions/`
+  dir must sit at the project *root* (not in the assets dir, or it's served as a static file
+  and never compiled); and satori does **not** decode HTML entities — use literal Unicode and
+  don't HTML-escape your text.
 - **Verification:** drive a real browser with **Playwright** to screenshot and assert the
   graph actually rendered — headless `chrome --screenshot` freezes before the force sim
   settles and lies to you.
